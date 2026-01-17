@@ -19,3 +19,133 @@ model Post {
 
     @@index([name])
 }
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  username      String        @unique
+  passwordHash  String
+
+  // Profile Information
+  firstName     String?
+  lastName      String?
+  phoneNumber   String?       @unique
+  avatarUrl     String?       // Profile picture
+  dateOfBirth   DateTime?
+  address       String?
+
+  // KYC / Compliance
+  kycStatus      KYCStatus   @default(PENDING)
+  kycDocumentUrl String?
+  kycSubmittedAt DateTime?
+  kycVerifiedAt  DateTime?
+  panNumber      String?      @unique
+
+  // Trading Specifics
+  role          UserRole      @default(INVESTOR)
+  status        AccountStatus @default(PENDING_VERIFICATION)
+  riskTolerance RiskLevel     @default(MEDIUM)
+
+  // Financials
+  totalBalance      Decimal   @default(0.00)
+  availableCash     Decimal   @default(0.00)
+  currency          String    @default("USD")
+  bankAccountNumber String?
+  bankIFSC          String?
+
+  // Advisor Relationships
+  assignedAdvisorId String?
+  assignedAdvisor   User?      @relation("AdvisorClients", fields: [assignedAdvisorId], references: [id])
+  clients           User[]     @relation("AdvisorClients")
+
+  // Transactions & Investments
+  transactions      Transaction[]
+  
+
+  // Activity & Timestamps
+  lastLogin        DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Portfolio relations
+  
+  ownedPortfolios   Portfolio[] @relation("InvestorPortfolios") // investor owns
+  managedPortfolios Portfolio[] @relation("AdvisorPortfolios")  // advisor manages
+
+  @@index([email])
+  @@index([username])
+}
+
+model Transaction {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  type         TransactionType
+  amount       Decimal
+  currency     String       @default("USD")
+  status       TransactionStatus @default(PENDING)
+  description  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Portfolio {
+  id             String   @id @default(cuid())
+
+  // Investor
+  userId         String
+  user           User     @relation("InvestorPortfolios", fields: [userId], references: [id])
+
+  // Advisor
+  advisorId      String?
+  advisor        User?    @relation("AdvisorPortfolios", fields: [advisorId], references: [id])
+
+  name           String
+  investedAmount Decimal
+  currentValue   Decimal
+  currency       String   @default("USD")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
+enum UserRole {
+  INVESTOR
+  ADVISOR
+  ADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  INVESTMENT
+  PROFIT
+  FEE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
